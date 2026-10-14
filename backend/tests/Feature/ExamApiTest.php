@@ -22,8 +22,8 @@ class ExamApiTest extends TestCase
     {
         parent::setUp();
 
-       $this->teacher = User::factory()->create(['role' => 'teacher']);
-       $this->student = User::factory()->create(['role' => 'student']);
+        $this->teacher = User::factory()->create(['role' => 'teacher']);
+        $this->student = User::factory()->create(['role' => 'student']);
     }
 
     #[Test]
@@ -89,18 +89,14 @@ class ExamApiTest extends TestCase
         $submitPayload = [
             'student_id' => $this->student->id,
             'answers' => [
-                [
-                    'question_id' => $question->id,
-                    'option_id' => $correctOption->id,
-                ]
+                $question->id => $correctOption->id,
             ]
         ];
 
         $response = $this->postJson("/api/exams/{$exam->id}/submit", $submitPayload);
-        $response->assertStatus(201);
 
-        $responseData = $response->json('data') ?? $response->json();
-        $this->assertEquals(10, $responseData['score'] ?? $responseData['total_score'] ?? null);
+        $response->assertStatus(201)
+            ->assertJsonPath('attempt.score', 10);
 
         $this->postJson("/api/exams/{$exam->id}/submit", $submitPayload)
             ->assertStatus(422);
