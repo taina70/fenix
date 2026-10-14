@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
@@ -26,7 +25,7 @@ class AttemptAnswer extends Model
 
     public function attempt():BelongsTo{
 
-        return $this->belongsTo(ExamAttemp::class, 'attemp_id');
+        return $this->belongsTo(ExamAttempt::class, 'attemp_id');
     }
 
     public function question():BelongsTo{
