@@ -7,14 +7,13 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 
 class Option extends Model
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     protected $fillable = [
         'question_id',
@@ -27,7 +26,8 @@ class Option extends Model
 
        'is_correct' => 'boolean',
     ];
-    public function question():BelongsTo{
+    public function question():BelongsTo
+    {
 
         return $this->belongsTo(Question::class);
     }

@@ -10,15 +10,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class Question extends Model
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     protected $fillable = [
         'exam_id',
@@ -47,7 +46,7 @@ class Question extends Model
 
     }
 
-    public function correctOption(): HasMany
+    public function correctOption(): HasOne
     {
         return $this->hasMany(Option::class)->where('is_correct', true);
 

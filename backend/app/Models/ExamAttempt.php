@@ -7,17 +7,16 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class ExamAttemp extends Model
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     protected $fillable = [
             'exam_id',
@@ -47,7 +46,8 @@ class ExamAttemp extends Model
 
             return $this->belongsTo(User::class);
         }
-         public function asnwers():HasMany{
+         public function asnwers():HasMany
+         {
             return $this->hasMany(AttemptAnswer::class, 'attempt_id');
 
         }
