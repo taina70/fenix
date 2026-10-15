@@ -7,6 +7,7 @@ use App\Models\Exam;
 use App\Services\ExamService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use OpenApi\Attributes as OA;
 
 class ExamController extends Controller
@@ -28,17 +29,6 @@ class ExamController extends Controller
         return response()->json($exams);
     }
 
-    public function show(Exam $exam): JsonResponse
-    {
-        $exam->load(['questions' => function ($query) {
-            $query->with(['options' => function ($q) {
-                $q->select('id', 'question_id', 'text'); // Oculta o is_correct para o aluno
-            }]);
-        }]);
-
-        return response()->json($exam);
-    }
-
     #[OA\Get(
         path: "/api/exams/{exam}",
         summary: "Exibe os detalhes e questões de uma prova (ocultando respostas corretas)",
@@ -51,6 +41,16 @@ class ExamController extends Controller
             new OA\Response(response: 404, description: "Prova não encontrada")
         ]
     )]
+    public function show(Exam $exam): JsonResponse
+    {
+        $exam->load(['questions' => function ($query) {
+            $query->with(['options' => function ($q) {
+                $q->select('id', 'question_id', 'text'); // Oculta o is_correct para o aluno
+            }]);
+        }]);
+
+        return response()->json($exam);
+    }
 
     #[OA\Post(
         path: "/api/exams",
@@ -80,7 +80,6 @@ class ExamController extends Controller
                                             new OA\Property(property: "is_correct", type: "boolean", example: true)
                                         ]
                                     ),
-                                    // Garante que o exemplo do Swagger gere 2 opções no JSON padrão
                                     example: [
                                         ["text" => "25", "is_correct" => true],
                                         ["text" => "20", "is_correct" => false]
@@ -129,8 +128,12 @@ class ExamController extends Controller
             }
         }
 
+        // Limpa o cache das estatísticas do Redis para refletir no Dashboard
+        Cache::forget("dashboard_stats_null");
+
         return response()->json($exam->load('questions.options'), 201);
     }
+
     #[OA\Delete(
         path: "/api/exams/{exam}",
         summary: "Remove uma prova cadastrada",
@@ -147,6 +150,10 @@ class ExamController extends Controller
     public function destroy(Exam $exam): JsonResponse
     {
         $exam->delete();
+
+        Cache::forget("dashboard_stats_null");
+        Cache::forget("dashboard_stats_{$exam->id}");
+
         return response()->json(['message' => 'Prova removida com sucesso.']);
     }
 
@@ -163,7 +170,16 @@ class ExamController extends Controller
                 required: ["student_id", "answers"],
                 properties: [
                     new OA\Property(property: "student_id", type: "integer", example: 2),
-                    new OA\Property(property: "answers", type: "object", example: '{"1": 2}')
+                    new OA\Property(
+                        property: "answers",
+                        type: "array",
+                        items: new OA\Items(
+                            properties: [
+                                new OA\Property(property: "question_id", type: "integer", example: 1),
+                                new OA\Property(property: "option_id", type: "integer", example: 2)
+                            ]
+                        )
+                    )
                 ]
             )
         ),
@@ -186,8 +202,14 @@ class ExamController extends Controller
             $validated['answers']
         );
 
+        Cache::forget("dashboard_stats_null");
+        Cache::forget("dashboard_stats_{$exam->id}");
+
         return response()->json([
             'message' => 'Prova enviada e corrigida com sucesso!',
+            'score' => $attempt->score ?? $attempt['score'],
+            'total_points' => $attempt->total_points ?? $attempt['total_points'],
+            'percentage' => $attempt->percentage ?? $attempt['percentage'],
             'attempt' => $attempt,
         ], 201);
     }
