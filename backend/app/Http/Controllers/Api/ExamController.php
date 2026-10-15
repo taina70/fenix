@@ -41,6 +41,7 @@ class ExamController extends Controller
             new OA\Response(response: 404, description: "Prova não encontrada")
         ]
     )]
+
     public function show(Exam $exam): JsonResponse
     {
         $exam->load(['questions' => function ($query) {
@@ -296,28 +297,45 @@ class ExamController extends Controller
         ]
     )]
 
-    public function submit(Request $request, Exam $exam): JsonResponse
+      public function submit(Request $request, Exam $exam): JsonResponse
     {
-        $validated = $request->validate([
+        // 1. Cria o validador manualmente para evitar que o Laravel tente renderizar HTML
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'student_id' => 'required|exists:users,id',
             'answers' => 'required|array',
         ]);
 
-        $attempt = $this->examService->submitAttempt(
-            $exam,
-            $validated['student_id'],
-            $validated['answers']
-        );
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Erro de validação nos campos estruturais.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        Cache::forget("dashboard_stats_null");
-        Cache::forget("dashboard_stats_{$exam->id}");
+        $validated = $validator->validated();
 
-        return response()->json([
-            'message' => 'Prova enviada e corrigida com sucesso!',
-            'score' => $attempt->score ?? $attempt['score'],
-            'total_points' => $attempt->total_points ?? $attempt['total_points'],
-            'percentage' => $attempt->percentage ?? $attempt['percentage'],
-            'attempt' => $attempt,
-        ], 201);
+        try {
+            $attempt = $this->examService->submitAttempt(
+                $exam,
+                $validated['student_id'],
+                $validated['answers']
+            );
+
+            return response()->json([
+                'message' => 'Prova enviada e corrigida com sucesso!',
+                'attempt' => [
+                    'score' => $attempt->score,
+                    'total_points' => $attempt->total_points,
+                    'percentage' => $attempt->percentage,
+                ]
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Os dados fornecidos são inválidos.',
+                'errors' => $e->errors()
+            ], 422);
+        }
     }
+
 }
