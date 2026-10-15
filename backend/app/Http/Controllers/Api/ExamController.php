@@ -7,10 +7,20 @@ use App\Models\Exam;
 use App\Services\ExamService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use OpenApi\Attributes as OA;
 
 class ExamController extends Controller
 {
     public function __construct(protected ExamService $examService) {}
+
+    #[OA\Get(
+        path: "/api/exams",
+        summary: "Lista todas as provas cadastradas",
+        tags: ["Provas"],
+        responses: [
+            new OA\Response(response: 200, description: "Lista de provas retornada com sucesso")
+        ]
+    )]
 
     public function index(): JsonResponse
     {
@@ -28,6 +38,65 @@ class ExamController extends Controller
 
         return response()->json($exam);
     }
+
+    #[OA\Get(
+        path: "/api/exams/{exam}",
+        summary: "Exibe os detalhes e questões de uma prova (ocultando respostas corretas)",
+        tags: ["Provas"],
+        parameters: [
+            new OA\Parameter(name: "exam", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Detalhes da prova"),
+            new OA\Response(response: 404, description: "Prova não encontrada")
+        ]
+    )]
+
+    #[OA\Post(
+        path: "/api/exams",
+        summary: "Cria uma nova prova com questões e opções",
+        tags: ["Provas"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["title", "created_by", "questions"],
+                properties: [
+                    new OA\Property(property: "title", type: "string", example: "Prova de Matemática"),
+                    new OA\Property(property: "description", type: "string", example: "Avaliação 1º Trimestre"),
+                    new OA\Property(property: "created_by", type: "integer", example: 1),
+                    new OA\Property(
+                        property: "questions",
+                        type: "array",
+                        items: new OA\Items(
+                            properties: [
+                                new OA\Property(property: "statement", type: "string", example: "Quanto é 5x5?"),
+                                new OA\Property(property: "points", type: "integer", example: 10),
+                                new OA\Property(
+                                    property: "options",
+                                    type: "array",
+                                    items: new OA\Items(
+                                        properties: [
+                                            new OA\Property(property: "text", type: "string", example: "25"),
+                                            new OA\Property(property: "is_correct", type: "boolean", example: true)
+                                        ]
+                                    ),
+                                    // Garante que o exemplo do Swagger gere 2 opções no JSON padrão
+                                    example: [
+                                        ["text" => "25", "is_correct" => true],
+                                        ["text" => "20", "is_correct" => false]
+                                    ]
+                                )
+                            ]
+                        )
+                    )
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: "Prova criada com sucesso"),
+            new OA\Response(response: 422, description: "Erro de validação nos campos")
+        ]
+    )]
 
     public function store(Request $request): JsonResponse
     {
@@ -62,12 +131,47 @@ class ExamController extends Controller
 
         return response()->json($exam->load('questions.options'), 201);
     }
+    #[OA\Delete(
+        path: "/api/exams/{exam}",
+        summary: "Remove uma prova cadastrada",
+        tags: ["Provas"],
+        parameters: [
+            new OA\Parameter(name: "exam", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Prova removida com sucesso"),
+            new OA\Response(response: 404, description: "Prova não encontrada")
+        ]
+    )]
 
     public function destroy(Exam $exam): JsonResponse
     {
         $exam->delete();
         return response()->json(['message' => 'Prova removida com sucesso.']);
     }
+
+    #[OA\Post(
+        path: "/api/exams/{exam}/submit",
+        summary: "Submete as respostas de um aluno para uma prova",
+        tags: ["Provas"],
+        parameters: [
+            new OA\Parameter(name: "exam", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["student_id", "answers"],
+                properties: [
+                    new OA\Property(property: "student_id", type: "integer", example: 2),
+                    new OA\Property(property: "answers", type: "object", example: '{"1": 2}')
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: "Prova enviada e corrigida com sucesso"),
+            new OA\Response(response: 422, description: "Submissão duplicada ou campos inválidos")
+        ]
+    )]
 
     public function submit(Request $request, Exam $exam): JsonResponse
     {
