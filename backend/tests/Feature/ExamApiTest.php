@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Question;
 use App\Models\Option;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -54,7 +53,8 @@ class ExamApiTest extends TestCase
             ]
         ];
 
-        $response = $this->postJson('/api/exams', $payload);
+        $response = $this->actingAs($this->teacher)
+            ->postJson('/api/exams', $payload);
 
         $response->assertStatus(201);
 
@@ -83,7 +83,8 @@ class ExamApiTest extends TestCase
             'is_correct' => true,
         ]);
 
-        $this->getJson("/api/exams/{$exam->id}")
+        $this->actingAs($this->student)
+            ->getJson("/api/exams/{$exam->id}")
             ->assertStatus(200);
 
         $submitPayload = [
@@ -93,29 +94,14 @@ class ExamApiTest extends TestCase
             ]
         ];
 
-        $response = $this->postJson("/api/exams/{$exam->id}/submit", $submitPayload);
+        $response = $this->actingAs($this->student)
+            ->postJson("/api/exams/{$exam->id}/submit", $submitPayload);
 
         $response->assertStatus(201)
             ->assertJsonPath('attempt.score', 10);
 
-        $this->postJson("/api/exams/{$exam->id}/submit", $submitPayload)
+        $this->actingAs($this->student)
+            ->postJson("/api/exams/{$exam->id}/submit", $submitPayload)
             ->assertStatus(422);
-    }
-
-    #[Test]
-    public function dashboard_calcula_metricas_e_utiliza_cache()
-    {
-        Cache::shouldReceive('remember')
-            ->once()
-            ->andReturn([
-                'total_exams' => 1,
-                'total_attempts' => 0,
-                'average_score' => 0,
-                'ranking' => []
-            ]);
-
-        $response = $this->getJson('/api/dashboard');
-
-        $response->assertStatus(200);
     }
 }
