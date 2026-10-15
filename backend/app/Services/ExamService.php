@@ -103,7 +103,8 @@ class ExamService
                 ->when($examId, fn($q) => $q->where('exam_id', $examId))
                 ->orderByDesc('score')
                 ->orderBy('completed_at')
-                ->paginate(10);
+                ->paginate(10)
+                ->toArray();
 
             return [
                 'average_score' => $averageScore,

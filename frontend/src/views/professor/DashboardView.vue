@@ -5,11 +5,14 @@
         <h1 class="text-2xl font-bold text-slate-800">📊 Painel de Desempenho</h1>
         <p class="text-slate-500 text-sm">Métricas em tempo real atualizadas via Redis</p>
       </div>
+      <!-- Indicador discreto no topo sem apagar os dados da tela -->
+      <span v-if="loading" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full animate-pulse">
+        Atualizando dados...
+      </span>
     </header>
 
-    <div v-if="loading" class="text-slate-500 p-4">Carregando dados...</div>
-
-    <template v-else-if="stats">
+    <!-- Exibe os cards sempre que stats existir, sem depender do v-if="loading" no bloco pai -->
+    <template v-if="stats">
       <!-- Grid de Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-indigo-500">
@@ -20,7 +23,7 @@
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-emerald-500">
           <span class="text-xs font-semibold text-slate-400 uppercase">Maior Nota (Top 1)</span>
           <span class="block text-2xl font-bold text-emerald-600 mt-2">
-            {{ typeof stats.top_score === 'object' ? (stats.top_score?.score ?? 0) : (stats.top_score ?? 0) }} pts
+            {{ topScoreValue }} pts
           </span>
         </div>
 
@@ -63,6 +66,11 @@
                 </span>
               </td>
             </tr>
+            <tr v-if="rankingList.length === 0">
+              <td colspan="4" class="px-4 py-6 text-center text-slate-400">
+                Nenhum resultado registrado ainda no ranking.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -76,14 +84,28 @@ import { useDashboard } from '../../components/useDashboard';
 
 const { stats, loading, fetchStats } = useDashboard();
 
+// No DashboardView.vue
+
+// 1. Garante a leitura da lista independente do envelopamento da API
 const rankingList = computed(() => {
-  if (!stats.value?.ranking) return [];
-  return Array.isArray(stats.value.ranking) 
-    ? stats.value.ranking 
-    : (stats.value.ranking.data || []);
+  if (!stats.value) return [];
+  
+  // Pega a lista do ranking mesmo se vier como stats.ranking, stats.ranking.data ou stats.leaderboard
+  const list = stats.value.ranking?.data || stats.value.ranking || stats.value.leaderboard || [];
+  
+  return Array.isArray(list) ? list : [];
+});
+
+// 2. Garante a leitura segura do Top Score
+const topScoreValue = computed(() => {
+  if (!stats.value?.top_score) return 0;
+  if (typeof stats.value.top_score === 'object') {
+    return stats.value.top_score.score ?? 0;
+  }
+  return stats.value.top_score ?? 0;
 });
 
 onMounted(() => {
-  fetchStats();
+  fetchStats(); 
 });
 </script>

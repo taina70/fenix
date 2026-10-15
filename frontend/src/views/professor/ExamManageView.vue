@@ -71,6 +71,8 @@ const handleDelete = async (id) => {
   try {
     await deleteExam(id);
     alert('Prova excluída com sucesso!');
+    await fetchExams(); 
+
   } catch (err) {
     alert('Erro ao excluir a prova.');
   }

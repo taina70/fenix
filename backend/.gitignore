@@ -22,6 +22,9 @@
 /storage/pail
 /vendor
 /storage/api-docs
+/database/database.sqlite
+/bootstrap/cache/*.php
+/storage/framework/sessions/*
 _ide_helper.php
 Homestead.json
 Homestead.yaml

@@ -13,7 +13,7 @@ export function useExams() {
     error.value = null;
     try {
       const response = await api.get("/exams");
-      exams.value = response.data;
+      exams.value = response.data.data || response.data;
     } catch (err) {
       error.value =
         err.response?.data?.message || "Erro ao carregar a lista de provas.";
@@ -27,7 +27,7 @@ export function useExams() {
     error.value = null;
     try {
       const response = await api.get(`/exams/${id}`);
-      exam.value = response.data;
+      exam.value = response.data.data || response.data;
     } catch (err) {
       error.value =
         err.response?.data?.message || "Erro ao carregar os dados da prova.";
@@ -41,26 +41,43 @@ export function useExams() {
     error.value = null;
     try {
       const response = await api.post("/exams", payload);
-      return response.data;
+      const newExam = response.data.data || response.data;
+
+      exams.value.unshift(newExam);
+      return newExam;
     } catch (err) {
-      error.value =
-        err.response?.data?.message ||
-        "Erro ao cadastrar a prova. Verifique as validações.";
+      error.value = err.response?.data?.message || "Erro ao criar a prova.";
       throw err;
     } finally {
       submitting.value = false;
     }
   };
 
-  const deleteExam = async (id) => {
+  const submitExam = async (examId, payload) => {
+    submitting.value = true;
+    error.value = null;
     try {
-      await api.delete(`/exams/${id}`);
-      exams.value = exams.value.filter((e) => e.id !== id);
+      const response = await api.post(`/exams/${examId}/submit`, payload);
+      return response.data;
     } catch (err) {
-      error.value = err.response?.data?.message || "Erro ao excluir a prova.";
+      error.value =
+        err.response?.data?.message || "Erro ao enviar as respostas da prova.";
       throw err;
+    } finally {
+      submitting.value = false;
     }
   };
+
+    const deleteExam = async (id) => {
+      error.value = null;
+      try {
+        await api.delete(`/exams/${id}`);
+        exams.value = exams.value.filter((e) => e.id !== id);
+      } catch (err) {
+        error.value = err.response?.data?.message || "Erro ao excluir a prova.";
+        throw err; 
+      }
+    };
 
   return {
     exams,
@@ -71,6 +88,7 @@ export function useExams() {
     fetchExams,
     fetchExamById,
     createExam,
+    submitExam,
     deleteExam,
   };
 }
