@@ -12,14 +12,17 @@
     </header>
 
     <!-- Exibe os cards sempre que stats existir, sem depender do v-if="loading" no bloco pai -->
+        <!-- Grid de Cards Modificado para refletir a consistência das unidades -->
     <template v-if="stats">
-      <!-- Grid de Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Média Geral: Trocado de 'pts' para '%' -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-indigo-500">
           <span class="text-xs font-semibold text-slate-400 uppercase">Média Geral</span>
-          <span class="block text-2xl font-bold text-indigo-600 mt-2">{{ stats.average_score ?? 0 }} pts</span>
+          <span class="block text-2xl font-bold text-indigo-600 mt-2">{{ stats.average_score ?? 0 }}%</span>
         </div>
 
+        <!-- Maior Nota: Mantido em pontos, pois o objeto top_score possui o detalhamento -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-emerald-500">
           <span class="text-xs font-semibold text-slate-400 uppercase">Maior Nota (Top 1)</span>
           <span class="block text-2xl font-bold text-emerald-600 mt-2">
@@ -27,16 +30,19 @@
           </span>
         </div>
 
+        <!-- Menor Nota: Trocado de 'pts' para '%' e passa a ler dinamicamente o dado calculado -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-rose-500">
           <span class="text-xs font-semibold text-slate-400 uppercase">Menor Nota</span>
-          <span class="block text-2xl font-bold text-rose-600 mt-2">{{ stats.lowest_score ?? 0 }} pts</span>
+          <span class="block text-2xl font-bold text-rose-600 mt-2">{{ stats.lowest_score ?? 0 }}%</span>
         </div>
 
+        <!-- Total de Submissões: Lendo corretamente a nova chave total_attempts -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 border-l-4 border-amber-500">
           <span class="text-xs font-semibold text-slate-400 uppercase">Total de Submissões</span>
           <span class="block text-2xl font-bold text-slate-700 mt-2">{{ stats.total_attempts ?? 0 }}</span>
         </div>
       </div>
+
 
       <!-- Tabela de Ranking -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden mt-6">
@@ -84,7 +90,6 @@ import { useDashboard } from '../../components/useDashboard';
 
 const { stats, loading, fetchStats } = useDashboard();
 
-// No DashboardView.vue
 
 // 1. Garante a leitura da lista independente do envelopamento da API
 const rankingList = computed(() => {

@@ -75,7 +75,7 @@ class ExamService
         });
     }
 
-    public function getDashboardStats(?int $examId = null): array
+        public function getDashboardStats(?int $examId = null): array
     {
         $cacheKey = $examId ? "dashboard:exam:{$examId}" : 'dashboard:global:stats';
 
@@ -88,26 +88,39 @@ class ExamService
 
             $attempts = $query->get();
 
+            // Se não houver tentativas registradas, retorna a estrutura zerada com as chaves corretas
             if ($attempts->isEmpty()) {
                 return [
                     'average_score' => 0,
+                    'lowest_score' => 0,
+                    'total_attempts' => 0,
                     'top_score' => null,
-                    'ranking' => [],
+                    'ranking' => [
+                        'data' => []
+                    ],
                 ];
             }
 
+            // 1. Cálculos unificados baseados em Aproveitamento (%)
             $averageScore = round($attempts->avg('percentage'), 2);
-            $topAttempt = $attempts->sortByDesc('score')->first();
+            $lowestScore = round($attempts->min('percentage'), 2);
+            $totalAttempts = $attempts->count();
 
+            // Encontra a melhor tentativa baseada no maior aproveitamento percentual
+            $topAttempt = $attempts->sortByDesc('percentage')->first();
+
+            // 2. Ranking Geral ordenado de forma justa por Aproveitamento (%) e tempo de conclusão
             $ranking = ExamAttempt::with(['student', 'exam'])
                 ->when($examId, fn($q) => $q->where('exam_id', $examId))
-                ->orderByDesc('score')
+                ->orderByDesc('percentage') // Mudado de 'score' para 'percentage'
                 ->orderBy('completed_at')
                 ->paginate(10)
                 ->toArray();
 
             return [
                 'average_score' => $averageScore,
+                'lowest_score' => $lowestScore,     // Métrica solicitada adicionada
+                'total_attempts' => $totalAttempts, // Métrica solicitada adicionada
                 'top_score' => [
                     'student_name' => $topAttempt->student->name,
                     'score' => $topAttempt->score,
@@ -118,4 +131,5 @@ class ExamService
             ];
         });
     }
+
 }
