@@ -45,7 +45,7 @@ class ExamController extends Controller
     {
         $exam->load(['questions' => function ($query) {
             $query->with(['options' => function ($q) {
-                $q->select('id', 'question_id', 'text'); // Oculta o is_correct para o aluno
+                $q->select('id', 'question_id', 'text','is_correct');
             }]);
         }]);
 
@@ -97,9 +97,10 @@ class ExamController extends Controller
         ]
     )]
 
-    public function store(Request $request): JsonResponse
+           public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'created_by' => 'required|exists:users,id',
@@ -110,6 +111,39 @@ class ExamController extends Controller
             'questions.*.options.*.text' => 'required|string',
             'questions.*.options.*.is_correct' => 'required|boolean',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Erro de validação nos campos estruturais.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validator->after(function ($validator) use ($request) {
+            $questions = $request->input('questions', []);
+
+            foreach ($questions as $index => $question) {
+                $options = $question['options'] ?? [];
+
+                $correctCount = collect($options)->where('is_correct', true)->count();
+
+                if ($correctCount !== 1) {
+                    $validator->errors()->add(
+                        "questions.{$index}.options",
+                        "A questão " . ($index + 1) . " deve ter exatamente uma alternativa correta. (Encontradas: {$correctCount})"
+                    );
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Os dados fornecidos são inválidos.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $exam = Exam::create([
             'title' => $validated['title'],
@@ -132,6 +166,79 @@ class ExamController extends Controller
         Cache::forget("dashboard_stats_null");
 
         return response()->json($exam->load('questions.options'), 201);
+    }
+
+        #[OA\Put(
+        path: "/api/exams/{exam}",
+        summary: "Atualiza uma prova existente, suas questões e opções",
+        tags: ["Provas"],
+        parameters: [
+            new OA\Parameter(name: "exam", in: "path", required: true, schema: new OA\Schema(type: "integer"))
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Prova atualizada com sucesso"),
+            new OA\Response(response: 422, description: "Erro de validação")
+        ]
+    )]
+    public function update(Request $request, Exam $exam): JsonResponse
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'questions' => 'required|array|min:1',
+            'questions.*.id' => 'nullable|integer',
+            'questions.*.statement' => 'required|string',
+            'questions.*.points' => 'required|integer|min:1',
+            'questions.*.options' => 'required|array|min:2',
+            'questions.*.options.*.id' => 'nullable|integer',
+            'questions.*.options.*.text' => 'required|string',
+            'questions.*.options.*.is_correct' => 'required|boolean',
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            foreach ($request->input('questions', []) as $index => $question) {
+                $correctCount = collect($question['options'] ?? [])->where('is_correct', true)->count();
+                if ($correctCount !== 1) {
+                    $validator->errors()->add("questions.{$index}.options", "A questão " . ($index + 1) . " deve ter exatamente uma alternativa correta.");
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Dados inválidos.', 'errors' => $validator->errors()], 422);
+        }
+
+        $validated = $validator->validated();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($exam, $validated) {
+            $exam->update([
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+            ]);
+
+            // Para simplificar e evitar inconsistências, removemos as antigas questões e opções e reinserimos as atualizadas
+            $exam->questions()->delete();
+
+            foreach ($validated['questions'] as $qData) {
+                $question = $exam->questions()->create([
+                    'statement' => $qData['statement'],
+                    'points' => $qData['points'],
+                ]);
+
+                foreach ($qData['options'] as $oData) {
+                    $question->options()->create([
+                        'text' => $oData['text'],
+                        'is_correct' => $oData['is_correct'],
+                    ]);
+                }
+            }
+        });
+
+        // Limpa o cache para refletir no Dashboard e listagens
+        Cache::forget("dashboard_stats_null");
+        Cache::forget("dashboard_stats_{$exam->id}");
+
+        return response()->json($exam->load('questions.options'));
     }
 
     #[OA\Delete(

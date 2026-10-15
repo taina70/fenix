@@ -104,4 +104,110 @@ class ExamApiTest extends TestCase
             ->postJson("/api/exams/{$exam->id}/submit", $submitPayload)
             ->assertStatus(422);
     }
+
+    #[Test]
+    public function ela_deve_rejeitar_uma_prova_se_uma_questao_tiver_mais_de_uma_alternativa_correta()
+    {
+        $payload = [
+            'title' => 'Prova Teste de Validação',
+            'description' => 'Testando múltiplas alternativas corretas',
+            'created_by' => $this->teacher->id,
+            'questions' => [
+                [
+                    'statement' => 'Qual é a resposta certa?',
+                    'points' => 10,
+                    'options' => [
+                        ['text' => 'Alternativa A', 'is_correct' => true],
+                        ['text' => 'Alternativa B', 'is_correct' => true],
+                    ]
+                ]
+            ]
+        ];
+
+        $response = $this->postJson('/api/exams', $payload);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['questions.0.options']);
+    }
+
+    #[Test]
+    public function ele_deve_atualizar_uma_prova_com_sucesso_quando_os_dados_forem_validos()
+    {
+        // 1. Cria a prova inicial de forma direta
+        $exam = Exam::create([
+            'title' => 'Título Original',
+            'description' => 'Descrição antiga',
+            'created_by' => $this->teacher->id
+        ]);
+
+        $question = Question::create([
+            'exam_id' => $exam->id,
+            'statement' => 'Questão Antiga',
+            'points' => 5
+        ]);
+
+        Option::create(['question_id' => $question->id, 'text' => 'Opção Certa', 'is_correct' => true]);
+        Option::create(['question_id' => $question->id, 'text' => 'Opção Errada', 'is_correct' => false]);
+
+        // 2. Define o payload de atualização
+        $payload = [
+            'title' => 'Título Atualizado via Teste',
+            'description' => 'Nova descrição',
+            'questions' => [
+                [
+                    'statement' => 'Nova Questão Modificada',
+                    'points' => 10,
+                    'options' => [
+                        ['text' => 'Nova Opção Verdadeira', 'is_correct' => true],
+                        ['text' => 'Nova Opção Falsa', 'is_correct' => false],
+                    ]
+                ]
+            ]
+        ];
+
+        // 3. Executa a requisição PUT
+        $response = $this->putJson("/api/exams/{$exam->id}", $payload);
+
+        // 4. Asserts: Confirma o sucesso e valida a alteração
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('exams', [
+            'id' => $exam->id,
+            'title' => 'Título Atualizado via Teste'
+        ]);
+
+        $this->assertDatabaseMissing('questions', ['statement' => 'Questão Antiga']);
+        $this->assertDatabaseHas('questions', ['statement' => 'Nova Questão Modificada', 'points' => 10]);
+    }
+
+    #[Test]
+    public function ele_deve_rejeitar_a_atualizacao_da_prova_se_uma_questao_tiver_mais_de_uma_alternativa_correta()
+    {
+        // 1. Cria a prova inicial de forma direta
+        $exam = Exam::create([
+            'title' => 'Prova Inicial para Erro',
+            'created_by' => $this->teacher->id
+        ]);
+
+        // 2. Monta o payload inválido
+        $payload = [
+            'title' => 'Tentando Atualizar com Erro',
+            'questions' => [
+                [
+                    'statement' => 'Questão com erro proposital',
+                    'points' => 5,
+                    'options' => [
+                        ['text' => 'Opção A', 'is_correct' => true],
+                        ['text' => 'Opção B', 'is_correct' => true],
+                    ]
+                ]
+            ]
+        ];
+
+        // 3. Executa a requisição PUT
+        $response = $this->putJson("/api/exams/{$exam->id}", $payload);
+
+        // 4. Asserts: Garante o bloqueio 422
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['questions.0.options']);
+    }
 }

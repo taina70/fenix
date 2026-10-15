@@ -42,7 +42,13 @@
             <td class="px-6 py-4 font-mono font-semibold text-slate-400">#{{ exam.id }}</td>
             <td class="px-6 py-4 font-semibold text-slate-800">{{ exam.title }}</td>
             <td class="px-6 py-4 text-slate-500 max-w-xs truncate">{{ exam.description || 'Sem descrição' }}</td>
-            <td class="px-6 py-4 text-right">
+            <td class="px-6 py-4 text-right space-x-2">
+              <router-link 
+                :to="`/professor/exams/edit/${exam.id}`" 
+                class="inline-flex items-center px-3 py-1.5 border border-amber-200 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg text-xs font-semibold transition"
+              >
+                Editar
+              </router-link>
               <button 
                 @click="handleDelete(exam.id)" 
                 class="inline-flex items-center px-3 py-1.5 border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg text-xs font-semibold transition"

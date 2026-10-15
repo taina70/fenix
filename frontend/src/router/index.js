@@ -7,6 +7,7 @@ import ExamResultView from "../views/student/ExamResultView.vue";
 import DashboardView from "../views/professor/DashboardView.vue";
 import ExamCreateView from "../views/professor/ExamCreateView.vue";
 import ExamManageView from "../views/professor/ExamManageView.vue";
+import ExamEditView from "../views/professor/ExamEditView.vue";
 
 const routes = [
   { path: "/", redirect: "/student/exams" },
@@ -41,6 +42,11 @@ const routes = [
     path: "/professor/exams/manage",
     name: "professor.exams.manage",
     component: ExamManageView,
+  },
+  {
+    path: "/professor/exams/edit/:id",
+    name: "ExamEdit",
+    component: ExamEditView
   },
 ];
 

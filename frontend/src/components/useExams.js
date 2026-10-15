@@ -68,6 +68,21 @@ export function useExams() {
     }
   };
 
+   const updateExam = async (id, payload) => {
+     submitting.value = true;
+     error.value = null;
+     try {
+       const response = await api.put(`/exams/${id}`, payload);
+       return response.data;
+     } catch (err) {
+       error.value =
+         err.response?.data?.message || "Erro ao atualizar a prova.";
+       throw err;
+     } finally {
+       submitting.value = false;
+     }
+   };
+
     const deleteExam = async (id) => {
       error.value = null;
       try {
@@ -89,6 +104,7 @@ export function useExams() {
     fetchExamById,
     createExam,
     submitExam,
+    updateExam,
     deleteExam,
   };
 }

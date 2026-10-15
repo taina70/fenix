@@ -55,7 +55,7 @@ class ExamSeeder extends Seeder
         Option::create(['question_id' => $q3->id, 'text' => 'Seleção Brasileira', 'is_correct'=> true]);
         Option::create(['question_id' => $q3->id, 'text' => 'Real Madrid', 'is_correct'=> false]);
         Option::create(['question_id' => $q3->id, 'text' => 'Leon', 'is_correct'=> false]);
-        Option::create(['question_id' => $q3->id, 'text' => 'Manchest United', 'is_correct'=> true]);
+        Option::create(['question_id' => $q3->id, 'text' => 'Manchest United', 'is_correct'=> false]);
 
 
 
