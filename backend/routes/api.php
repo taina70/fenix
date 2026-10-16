@@ -17,3 +17,4 @@ Route::delete('/exams/{exam}', [ExamController::class, 'destroy']);
 Route::post('/exams/{exam}/submit', [ExamController::class, 'submit']);
 Route::put('/exams/{exam}', [ExamController::class, 'update']);
 Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::get('/students/{student}/attempts', [ExamController:: class, 'studentHistory']);

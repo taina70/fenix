@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use OpenApi\Attributes as OA;
+use App\Models\ExamAttempt;
 
 class ExamController extends Controller
 {
@@ -369,5 +370,82 @@ class ExamController extends Controller
             ], 422);
         }
     }
+
+    #[OA\Get(
+    path: "/api/students/{student}/attempts",
+    summary: "Consulta o histórico de provas de um aluno",
+    tags: ["Alunos"],
+    parameters: [
+        new OA\Parameter(
+            name: "student",
+            in: "path",
+            required: true,
+            description: "ID do aluno",
+            schema: new OA\Schema(type: "integer", example: 2)
+        ),
+        new OA\Parameter(
+            name: "page",
+            in: "query",
+            required: false,
+            description: "Número da página do histórico",
+            schema: new OA\Schema(type: "integer", minimum: 1, example: 1)
+        )
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: "Histórico de provas retornado com sucesso",
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(
+                        property: "data",
+                        type: "array",
+                        items: new OA\Items(
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "id", type: "integer", example: 1),
+                                new OA\Property(property: "exam_id", type: "integer", example: 1),
+                                new OA\Property(property: "student_id", type: "integer", example: 2),
+                                new OA\Property(property: "score", type: "number", example: 7),
+                                new OA\Property(property: "total_points", type: "number", example: 10),
+                                new OA\Property(property: "percentage", type: "number", example: 70),
+                                new OA\Property(
+                                    property: "completed_at",
+                                    type: "string",
+                                    format: "date-time",
+                                    example: "2026-10-16T14:19:26"
+                                ),
+                                new OA\Property(
+                                    property: "exam",
+                                    type: "object",
+                                    properties: [
+                                        new OA\Property(property: "id", type: "integer", example: 1),
+                                        new OA\Property(property: "title", type: "string", example: "Avaliação"),
+                                        new OA\Property(property: "description", type: "string", nullable: true, example: "Prova de conhecimentos")
+                                    ]
+                                )
+                            ]
+                        )
+                    ),
+                    new OA\Property(property: "current_page", type: "integer", example: 1),
+                    new OA\Property(property: "last_page", type: "integer", example: 1),
+                    new OA\Property(property: "per_page", type: "integer", example: 10),
+                    new OA\Property(property: "total", type: "integer", example: 1)
+                ]
+            )
+        )
+    ]
+)]
+
+    public function studentHistory(int $student)
+        {
+            $attempts = ExamAttempt::query()
+                ->where('student_id', $student)
+                ->with('exam:id,title,description')
+                ->orderByDesc('completed_at')
+                ->paginate(10);
+
+            return response()->json($attempts);
+        }
 
 }

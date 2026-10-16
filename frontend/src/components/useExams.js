@@ -8,17 +8,29 @@ export function useExams() {
   const submitting = ref(false);
   const error = ref(null);
 
-  const fetchExams = async () => {
+  const fetchExams = async (params = {}) => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await api.get("/exams");
+      const response = await api.get("/exams", { params });
       exams.value = response.data.data || response.data;
     } catch (err) {
       error.value =
         err.response?.data?.message || "Erro ao carregar a lista de provas.";
     } finally {
       loading.value = false;
+    }
+  };
+
+  const fetchStudentHistory = async (studentId) => {
+    try {
+      const response = await api.get(`/students/${studentId}/attempts`);
+      return response.data.data || [];
+    } catch (err) {
+      error.value =
+        err.response?.data?.message ||
+        "Erro ao carregar o histórico de provas.";
+      throw err;
     }
   };
 
@@ -101,6 +113,7 @@ export function useExams() {
     submitting,
     error,
     fetchExams,
+    fetchStudentHistory,
     fetchExamById,
     createExam,
     submitExam,
