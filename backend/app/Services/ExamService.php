@@ -25,7 +25,6 @@ class ExamService
             ]);
         }
 
-        // === TRAVA DE SEGURANÇA ANTIFRAUDE: VALIDAÇÃO DE RELACIONAMENTO QUESTÃO -> PROVA ===
         // Carrega as questões legítimas desta avaliação específica
         $exam->load('questions.options');
         $validQuestionIds = $exam->questions->pluck('id')->toArray();
@@ -41,7 +40,6 @@ class ExamService
         }
         // ==================================================================================
 
-        // 2. Encapsula o fluxo em Transação para garantir integridade e tratar concorrência pura
         try {
             return DB::transaction(function () use ($exam, $studentId, $answersData) {
                 $score = 0;

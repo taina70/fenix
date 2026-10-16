@@ -65,7 +65,6 @@ class DashboardApiTest extends TestCase
         $this->actingAs($teacher)->deleteJson("/api/exams/{$exam->id}");
 
         // Verifica se o sistema tentou limpar o cache correspondente
-        // Nota: no seu controller usamos as chaves "dashboard_stats_null" ou "dashboard:global:stats"
         \Illuminate\Support\Facades\Cache::shouldHaveReceived('forget');
     }
 

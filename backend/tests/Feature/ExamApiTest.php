@@ -315,4 +315,33 @@ class ExamApiTest extends TestCase
         $response->assertStatus(404);
     }
 
+    #[Test]
+    public function test_detalhes_da_prova_nao_exibem_gabarito(): void
+{
+    $teacher = \App\Models\User::factory()->create([
+        'role' => 'teacher',
+    ]);
+
+    $exam = \App\Models\Exam::create([
+        'title' => 'Prova de teste',
+        'created_by' => $teacher->id,
+    ]);
+
+    $question = $exam->questions()->create([
+        'statement' => 'Quanto é 2 + 2?',
+        'points' => 10,
+    ]);
+
+    $question->options()->createMany([
+        ['text' => '4', 'is_correct' => true],
+        ['text' => '5', 'is_correct' => false],
+    ]);
+
+    $response = $this->getJson("/api/exams/{$exam->id}");
+
+    $response->assertOk()
+        ->assertJsonMissingPath('questions.0.options.0.is_correct')
+        ->assertJsonMissingPath('questions.0.options.1.is_correct');
+}
+
 }

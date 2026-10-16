@@ -22,6 +22,6 @@ class Exam extends Model
 
     public function attempts(): HasMany
     {
-        return $this->hasMany(ExamAttemp::class);
+        return $this->hasMany(ExamAttempt::class);
     }
 }

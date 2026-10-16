@@ -18,14 +18,43 @@ class ExamController extends Controller
         path: "/api/exams",
         summary: "Lista todas as provas cadastradas",
         tags: ["Provas"],
+        parameters: [
+            new OA\Parameter(
+                name: "student_id",
+                in: "query",
+                required: false,
+                description: "ID do aluno para retornar a nota e status de submissão (has_submitted)",
+                schema: new OA\Schema(type: "integer", example: 2)
+            )
+        ],
         responses: [
             new OA\Response(response: 200, description: "Lista de provas retornada com sucesso")
         ]
     )]
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $exams = Exam::withCount('questions')->get();
+        $studentId = $request->query('student_id');
+
+        $exams = Exam::withCount('questions')->get()->map(function ($exam) use ($studentId) {
+            $exam->has_submitted = false;
+            $exam->score = null;
+
+            if ($studentId) {
+                $attempt = \App\Models\ExamAttempt::where('exam_id', $exam->id)
+                    ->where('student_id', $studentId)
+                    ->first();
+
+                if ($attempt) {
+                    $exam->has_submitted = true;
+                    $exam->score = $attempt->score;
+                    $exam->percentage = $attempt->percentage;
+                }
+            }
+
+            return $exam;
+        });
+
         return response()->json($exams);
     }
 
@@ -42,16 +71,22 @@ class ExamController extends Controller
         ]
     )]
 
+
     public function show(Exam $exam): JsonResponse
     {
-        $exam->load(['questions' => function ($query) {
-            $query->with(['options' => function ($q) {
-                $q->select('id', 'question_id', 'text','is_correct');
-            }]);
-        }]);
+        $exam->load([
+            'questions' => function ($query) {
+                $query->with([
+                    'options' => function ($q) {
+                        $q->select('id', 'question_id', 'text');
+                    }
+                ]);
+            }
+        ]);
 
         return response()->json($exam);
     }
+
 
     #[OA\Post(
         path: "/api/exams",
@@ -164,7 +199,7 @@ class ExamController extends Controller
         }
 
         // Limpa o cache das estatísticas do Redis para refletir no Dashboard
-        Cache::forget("dashboard_stats_null");
+        Cache::forget('dashboard:global:stats');
 
         return response()->json($exam->load('questions.options'), 201);
     }
@@ -236,7 +271,7 @@ class ExamController extends Controller
         });
 
         // Limpa o cache para refletir no Dashboard e listagens
-        Cache::forget("dashboard_stats_null");
+        Cache::forget('dashboard:global:stats');
         Cache::forget("dashboard_stats_{$exam->id}");
 
         return response()->json($exam->load('questions.options'));
@@ -259,13 +294,13 @@ class ExamController extends Controller
     {
         $exam->delete();
 
-        Cache::forget("dashboard_stats_null");
+        Cache::forget('dashboard:global:stats');
         Cache::forget("dashboard_stats_{$exam->id}");
 
         return response()->json(['message' => 'Prova removida com sucesso.']);
     }
 
-    #[OA\Post(
+   #[OA\Post(
         path: "/api/exams/{exam}/submit",
         summary: "Submete as respostas de um aluno para uma prova",
         tags: ["Provas"],
@@ -279,15 +314,12 @@ class ExamController extends Controller
                 properties: [
                     new OA\Property(property: "student_id", type: "integer", example: 2),
                     new OA\Property(
-                        property: "answers",
-                        type: "array",
-                        items: new OA\Items(
-                            properties: [
-                                new OA\Property(property: "question_id", type: "integer", example: 1),
-                                new OA\Property(property: "option_id", type: "integer", example: 2)
-                            ]
-                        )
-                    )
+                property: "answers",
+                type: "object",
+                description: "Objeto chave-valor onde a chave é o ID da questão e o valor é o ID da opção selecionada",
+                additionalProperties: new OA\AdditionalProperties(type: "integer"),
+                example: ["1" => 1, "2" => 5]
+)
                 ]
             )
         ),

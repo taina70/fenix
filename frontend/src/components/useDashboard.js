@@ -36,7 +36,6 @@ export function useDashboard() {
         };
       }
     } catch (err) {
-      console.error("Erro ao carregar dashboard:", err);
       error.value =
         err.response?.data?.message || "Erro ao carregar dados do dashboard.";
     } finally {

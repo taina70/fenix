@@ -25,7 +25,7 @@ class AttemptAnswer extends Model
 
     public function attempt():BelongsTo{
 
-        return $this->belongsTo(ExamAttempt::class, 'attemp_id');
+        return $this->belongsTo(ExamAttempt::class, 'attempt_id');
     }
 
     public function question():BelongsTo{
