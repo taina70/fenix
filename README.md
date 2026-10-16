@@ -41,8 +41,6 @@ docker compose up -d --build
 Rodar Migrações e Seeds do Banco
 docker compose exec backend php artisan migrate:fresh --seed
 
-Documentação da API (Swagger)
-docker compose exec backend php artisan l5-swagger:generate - 
 1 - Gere os arquivos de especificação dentro do container 
 docker compose exec backend php artisan l5-swagger:generate
 2 - Acesse no navegador:

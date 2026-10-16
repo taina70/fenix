@@ -11,7 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Illuminate\Validation\ValidationException;
-
+use App\Models\ExamAttempt;
+use Illuminate\Support\Facades\Cache;
 class ExamServiceTest extends TestCase
 {
     use RefreshDatabase;
@@ -92,4 +93,102 @@ class ExamServiceTest extends TestCase
             [$this->question->id => $this->wrongOption->id]
         );
     }
+
+    #[Test]
+    public function calcula_zero_pontos_quando_aluno_seleciona_alternativa_errada(): void
+    {
+        $attempt = $this->examService->submitAttempt(
+            $this->exam,
+            $this->student->id,
+            [$this->question->id => $this->wrongOption->id]
+        );
+
+        $this->assertEquals(0, $attempt->score);
+        $this->assertEquals(10, $attempt->total_points);
+        $this->assertEquals(0, $attempt->percentage);
+
+        $this->assertDatabaseHas('attempt_answers', [
+            'attempt_id' => $attempt->id,
+            'question_id' => $this->question->id,
+            'selected_option_id' => $this->wrongOption->id,
+        ]);
+    }
+
+    #[Test]
+    public function permite_submissao_sem_respostas_e_registra_zero_pontos(): void
+    {
+        $attempt = $this->examService->submitAttempt(
+            $this->exam,
+            $this->student->id,
+            []
+        );
+
+        $this->assertEquals(0, $attempt->score);
+        $this->assertEquals(10, $attempt->total_points);
+        $this->assertEquals(0, $attempt->percentage);
+        $this->assertCount(0, $attempt->answers);
+
+        $this->assertDatabaseHas('exam_attempts', [
+            'id' => $attempt->id,
+            'student_id' => $this->student->id,
+            'score' => 0,
+        ]);
+
+        $this->assertDatabaseCount('attempt_answers', 0);
+    }
+
+
+#[Test]
+public function retorna_metricas_zeradas_quando_nao_existem_tentativas(): void
+{
+    Cache::forget('dashboard:global:stats');
+
+    $stats = $this->examService->getDashboardStats();
+
+    $this->assertSame(0, $stats['average_score']);
+    $this->assertSame(0, $stats['lowest_score']);
+    $this->assertSame(0, $stats['total_attempts']);
+    $this->assertNull($stats['top_score']);
+    $this->assertSame([], $stats['ranking']['data']);
+}
+
+#[Test]
+public function calcula_metricas_e_ranking_das_tentativas(): void
+{
+    Cache::forget('dashboard:global:stats');
+
+    ExamAttempt::create([
+        'exam_id' => $this->exam->id,
+        'student_id' => $this->student->id,
+        'score' => 8,
+        'total_points' => 10,
+        'percentage' => 80,
+        'completed_at' => now()->subMinutes(2),
+    ]);
+
+    $secondStudent = User::factory()->create(['role' => 'student']);
+
+    ExamAttempt::create([
+        'exam_id' => $this->exam->id,
+        'student_id' => $secondStudent->id,
+        'score' => 6,
+        'total_points' => 10,
+        'percentage' => 60,
+        'completed_at' => now(),
+    ]);
+
+    $stats = $this->examService->getDashboardStats();
+
+    $this->assertEquals(70, $stats['average_score']);
+    $this->assertEquals(60, $stats['lowest_score']);
+    $this->assertEquals(2, $stats['total_attempts']);
+
+    $this->assertEquals(80, $stats['top_score']['percentage']);
+    $this->assertEquals(8, $stats['top_score']['score']);
+    $this->assertEquals(10, $stats['top_score']['total_points']);
+
+    $this->assertCount(2, $stats['ranking']['data']);
+    $this->assertEquals(80, $stats['ranking']['data'][0]['percentage']);
+}
+
 }
