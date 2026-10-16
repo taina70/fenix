@@ -1,3 +1,4 @@
+
 services:
   frontend:
     build:
@@ -19,14 +20,21 @@ services:
       dockerfile: Dockerfile
     container_name: fenix_backend
     restart: unless-stopped
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    command: >
+      sh -c "if [ ! -f vendor/autoload.php ]; then
+        composer install --no-interaction --prefer-dist;
+      fi &&
+      php artisan migrate --seed --force &&
+      php artisan serve --host=0.0.0.0 --port=8000"
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/var/www
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine
@@ -40,6 +48,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d fenix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:alpine
